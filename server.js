@@ -4,10 +4,9 @@ const server = require('http').createServer(app);
 const io = require('socket.io')(server);
 const { ExpressPeerServer } = require('peer');
 
-// Serve static files (HTML/JS)
-app.use(express.static('public'));
+// NO express.static needed anymore - Vercel serves public/ automatically
 
-// Add root route handler
+// Add root route handler (welcome page)
 app.get('/', (req, res) => {
     res.send(`
         <h1>Welcome to Mobile-to-Laptop Streamer</h1>
@@ -29,6 +28,11 @@ io.on('connection', (socket) => {
         socket.join(roomId);
         socket.to(roomId).emit('user-connected', userId);
     });
+});
+
+// Optional: Add a 404 handler for debugging
+app.use((req, res) => {
+    res.status(404).send('Page not found');
 });
 
 server.listen(3000, () => console.log('Server running on port 3000'));
