@@ -1,1 +1,36 @@
 
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Viewer (Laptop)</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/peerjs/1.4.7/peerjs.min.js"></script>
+</head>
+<body>
+    <video id="video" autoplay playsinline></video>
+    <script>
+        const peer = new Peer();
+        const video = document.getElementById('video');
+        const urlParams = new URLSearchParams(window.location.search);
+        const roomId = urlParams.get('room');
+
+        if (!roomId) {
+            alert('No room ID provided. Scan the QR code from streamer.');
+            return;
+        }
+
+        // Join signaling room
+        const socket = io();
+        peer.on('open', id => {
+            socket.emit('join-room', roomId, id);
+        });
+
+        // Connect to streamer when ready
+        socket.on('user-connected', userId => {
+            const call = peer.call(userId, null); // No local stream needed
+            call.on('stream', remoteStream => {
+                video.srcObject = remoteStream;
+            });
+        });
+    </script>
+</body>
+</html>
