@@ -1,14 +1,26 @@
-
 <!DOCTYPE html>
 <html>
 <head>
     <title>Viewer (Laptop)</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/peerjs/1.4.7/peerjs.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.2/socket.io.js"></script> <!-- Explicit Socket.io CDN -->
 </head>
 <body>
     <video id="video" autoplay playsinline></video>
     <script>
-        const peer = new Peer();
+        // Updated PeerJS configuration for Vercel
+        const peer = new Peer({
+            host: '/',  // Use root for Vercel
+            path: '/peerjs',
+            secure: true,  // For HTTPS
+            config: { 
+                'iceServers': [
+                    { 'urls': 'stun:stun.l.google.com:19302' },
+                    { 'urls': 'stun:stun1.l.google.com:19302' }  // Additional STUN for reliability
+                ] 
+            }  // Add STUN for NAT
+        });
+
         const video = document.getElementById('video');
         const urlParams = new URLSearchParams(window.location.search);
         const roomId = urlParams.get('room');
@@ -18,19 +30,27 @@
             return;
         }
 
-        // Join signaling room
-        const socket = io();
+        console.log('Room ID:', roomId);  // For debugging
+
+        // Join signaling room (updated for secure Socket.io)
+        const socket = io({ secure: true });  // Ensures HTTPS WebSocket
         peer.on('open', id => {
+            console.log('Peer ID:', id);  // For debugging
             socket.emit('join-room', roomId, id);
         });
 
         // Connect to streamer when ready
         socket.on('user-connected', userId => {
+            console.log('Connecting to user:', userId);  // For debugging
             const call = peer.call(userId, null); // No local stream needed
             call.on('stream', remoteStream => {
                 video.srcObject = remoteStream;
+                console.log('Stream received');  // For debugging
             });
+            call.on('error', err => console.error('Call error:', err));
         });
+
+        peer.on('error', err => console.error('Peer error:', err));
     </script>
 </body>
 </html>
