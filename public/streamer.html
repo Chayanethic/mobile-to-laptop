@@ -4,12 +4,25 @@
     <title>Streamer (Phone)</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/peerjs/1.4.7/peerjs.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.2/socket.io.js"></script> <!-- Explicit Socket.io CDN -->
 </head>
 <body>
     <video id="video" autoplay playsinline></video>
     <div id="qrcode"></div>
     <script>
-        const peer = new Peer(); // Auto-generates ID
+        // Updated PeerJS configuration for Vercel
+        const peer = new Peer({
+            host: '/',  // Use root for Vercel
+            path: '/peerjs',
+            secure: true,  // For HTTPS
+            config: { 
+                'iceServers': [
+                    { 'urls': 'stun:stun.l.google.com:19302' },
+                    { 'urls': 'stun:stun1.l.google.com:19302' }  // Additional STUN for reliability
+                ] 
+            }  // Add STUN for NAT
+        });
+
         const roomId = Math.random().toString(36).substring(7); // Unique room ID
         const video = document.getElementById('video');
 
@@ -20,18 +33,24 @@
                 peer.on('call', call => {
                     call.answer(stream); // Send stream to caller
                 });
-            });
+            })
+            .catch(err => console.error('Error accessing camera:', err));
 
-        // Generate QR code with viewer link (e.g., http://localhost:3000/viewer.html?room=abc123)
+        // Generate QR code with viewer link (uses current origin for Vercel URL)
         const qr = new QRCode(document.getElementById('qrcode'), {
             text: `${window.location.origin}/viewer.html?room=${roomId}`,
             width: 256,
             height: 256
         });
 
-        // Join signaling room
-        const socket = io();
-        peer.on('open', id => socket.emit('join-room', roomId, id));
+        // Join signaling room (updated for secure Socket.io)
+        const socket = io({ secure: true });  // Ensures HTTPS WebSocket
+        peer.on('open', id => {
+            console.log('Peer ID:', id);  // For debugging
+            socket.emit('join-room', roomId, id);
+        });
+
+        peer.on('error', err => console.error('Peer error:', err));
     </script>
 </body>
 </html>
